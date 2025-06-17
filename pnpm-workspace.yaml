@@ -1,0 +1,23 @@
+packages:
+  # All applications
+  - 'apps/*'
+  # All shared packages
+  - 'packages/*'
+
+# Configuration
+prefer-workspace-packages: true
+shared-workspace-lockfile: true
+save-workspace-protocol: 'rolling'
+
+# Node modules hoisting
+hoist-pattern:
+  - '*eslint*'
+  - '*prettier*'
+  - '*typescript*'
+  - '@types/*'
+
+# Public hoist pattern for shared dependencies
+public-hoist-pattern:
+  - '*eslint*'
+  - '*prettier*'
+  - '*typescript*'

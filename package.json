@@ -1,0 +1,59 @@
+{
+  "name": "laundry-management",
+  "version": "1.0.0",
+  "description": "End-to-end laundry service platform for Qatar market",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "husky install",
+    "install:all": "pnpm install",
+    "clean:all": "pnpm run clean --filter='./apps/*' && pnpm run clean --filter='./packages/*'",
+    "build:packages": "pnpm run build --filter='./packages/*'",
+    "build:apps": "pnpm run build --filter='./apps/*'",
+    "build:all": "pnpm run build:packages && pnpm run build:apps",
+    "test:all": "pnpm run test --filter='./apps/*' && pnpm run test --filter='./packages/*'",
+    "lint:all": "pnpm run lint --filter='./apps/*' && pnpm run lint --filter='./packages/*'",
+    "format:all": "prettier --write \"**/*.{js,ts,json,md}\"",
+    "dev:backend": "pnpm --filter=backend run start:dev",
+    "dev:frontend": "pnpm --filter=frontend run start",
+    "dev:mobile": "cd apps/mobile && flutter run",
+    "build:backend": "pnpm --filter=backend run build",
+    "build:frontend": "pnpm --filter=frontend run build",
+    "build:mobile": "cd apps/mobile && flutter build apk",
+    "docker:dev": "docker-compose -f tools/docker/docker-compose.yml up -d",
+    "docker:prod": "docker-compose -f tools/docker/docker-compose.prod.yml up -d",
+    "setup": "chmod +x tools/scripts/setup.sh && ./tools/scripts/setup.sh",
+    "db:up": "docker-compose -f tools/docker/docker-compose.yml up -d postgres redis",
+    "db:down": "docker-compose -f tools/docker/docker-compose.yml down",
+    "migration:generate": "pnpm --filter=backend run migration:generate",
+    "migration:run": "pnpm --filter=backend run migration:run"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^17.7.1",
+    "@commitlint/config-conventional": "^17.7.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "eslint": "^8.49.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^14.0.1",
+    "prettier": "^3.0.3",
+    "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.7.0",
+  "keywords": [
+    "laundry",
+    "qatar",
+    "nestjs",
+    "angular",
+    "flutter",
+    "monorepo"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
