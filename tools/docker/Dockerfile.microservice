@@ -1,0 +1,112 @@
+# Multi-stage Dockerfile for any microservice
+
+FROM node:18-alpine AS base
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Set working directory
+WORKDIR /app
+
+# Copy workspace configuration
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy packages
+COPY packages/ ./packages/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Build packages
+RUN pnpm --filter=shared-types run build
+RUN pnpm --filter=constants run build
+RUN pnpm --filter=common run build || true
+RUN pnpm --filter=database run build || true
+RUN pnpm --filter=messaging run build || true
+
+# Arguments for service configuration
+ARG SERVICE_NAME
+ARG SERVICE_PATH=services
+
+# Development stage
+FROM base AS development
+
+# Copy service source
+COPY apps/${SERVICE_PATH}/${SERVICE_NAME}/ ./apps/${SERVICE_PATH}/${SERVICE_NAME}/
+
+# Set working directory to service
+WORKDIR /app/apps/${SERVICE_PATH}/${SERVICE_NAME}
+
+# Install service dependencies
+RUN pnpm install
+
+# Expose port (will be overridden by environment variable)
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node --version || exit 1
+
+# Start development server
+CMD ["pnpm", "run", "start:dev"]
+
+# Production build stage
+FROM base AS build
+
+# Copy service source
+COPY apps/${SERVICE_PATH}/${SERVICE_NAME}/ ./apps/${SERVICE_PATH}/${SERVICE_NAME}/
+
+# Set working directory to service
+WORKDIR /app/apps/${SERVICE_PATH}/${SERVICE_NAME}
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Build service
+RUN pnpm run build
+
+# Production stage
+FROM node:18-alpine AS production
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/ ./packages/
+
+# Arguments for service configuration
+ARG SERVICE_NAME
+ARG SERVICE_PATH=services
+
+COPY apps/${SERVICE_PATH}/${SERVICE_NAME}/package.json ./apps/${SERVICE_PATH}/${SERVICE_NAME}/
+
+# Install only production dependencies
+RUN pnpm install --prod --frozen-lockfile
+
+# Copy built application
+COPY --from=build /app/apps/${SERVICE_PATH}/${SERVICE_NAME}/dist ./apps/${SERVICE_PATH}/${SERVICE_NAME}/dist
+
+# Set working directory to service
+WORKDIR /app/apps/${SERVICE_PATH}/${SERVICE_NAME}
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S microservice -u 1001
+
+# Change ownership of the app directory
+RUN chown -R microservice:nodejs /app
+USER microservice
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node --version || exit 1
+
+# Start production server
+CMD ["node", "dist/main"]

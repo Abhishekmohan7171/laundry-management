@@ -1,0 +1,312 @@
+version: '3.8'
+
+services:
+  # Database Services
+  postgres:
+    image: postgres:15-alpine
+    container_name: laundry_postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-laundry_db}
+      POSTGRES_USER: ${DB_USERNAME:-laundry_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - laundry_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-laundry_user}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    container_name: laundry_redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - laundry_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Microservices
+  user-service:
+    build:
+      context: ../../
+      dockerfile: tools/docker/Dockerfile.microservice
+      args:
+        SERVICE_NAME: user-service
+    container_name: laundry_user_service
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      SERVICE_NAME: user-service
+    ports:
+      - "3001:3001"
+    volumes:
+      - ../../apps/services/user-service:/app/apps/services/user-service
+      - ../../packages:/app/packages
+      - /app/node_modules
+      - /app/apps/services/user-service/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - laundry_network
+    restart: unless-stopped
+
+  order-service:
+    build:
+      context: ../../
+      dockerfile: tools/docker/Dockerfile.microservice
+      args:
+        SERVICE_NAME: order-service
+    container_name: laundry_order_service
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      SERVICE_NAME: order-service
+    ports:
+      - "3002:3002"
+    volumes:
+      - ../../apps/services/order-service:/app/apps/services/order-service
+      - ../../packages:/app/packages
+      - /app/node_modules
+      - /app/apps/services/order-service/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - laundry_network
+    restart: unless-stopped
+
+  payment-service:
+    build:
+      context: ../../
+      dockerfile: tools/docker/Dockerfile.microservice
+      args:
+        SERVICE_NAME: payment-service
+    container_name: laundry_payment_service
+    environment:
+      NODE_ENV: development
+      PORT: 3003
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      SERVICE_NAME: payment-service
+    ports:
+      - "3003:3003"
+    volumes:
+      - ../../apps/services/payment-service:/app/apps/services/payment-service
+      - ../../packages:/app/packages
+      - /app/node_modules
+      - /app/apps/services/payment-service/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - laundry_network
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: ../../
+      dockerfile: tools/docker/Dockerfile.microservice
+      args:
+        SERVICE_NAME: notification-service
+    container_name: laundry_notification_service
+    environment:
+      NODE_ENV: development
+      PORT: 3004
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      SERVICE_NAME: notification-service
+    ports:
+      - "3004:3004"
+    volumes:
+      - ../../apps/services/notification-service:/app/apps/services/notification-service
+      - ../../packages:/app/packages
+      - /app/node_modules
+      - /app/apps/services/notification-service/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - laundry_network
+    restart: unless-stopped
+
+  location-service:
+    build:
+      context: ../../
+      dockerfile: tools/docker/Dockerfile.microservice
+      args:
+        SERVICE_NAME: location-service
+    container_name: laundry_location_service
+    environment:
+      NODE_ENV: development
+      PORT: 3005
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      SERVICE_NAME: location-service
+    ports:
+      - "3005:3005"
+    volumes:
+      - ../../apps/services/location-service:/app/apps/services/location-service
+      - ../../packages:/app/packages
+      - /app/node_modules
+      - /app/apps/services/location-service/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - laundry_network
+    restart: unless-stopped
+
+  analytics-service:
+    build:
+      context: ../../
+      dockerfile: tools/docker/Dockerfile.microservice
+      args:
+        SERVICE_NAME: analytics-service
+    container_name: laundry_analytics_service
+    environment:
+      NODE_ENV: development
+      PORT: 3006
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      SERVICE_NAME: analytics-service
+    ports:
+      - "3006:3006"
+    volumes:
+      - ../../apps/services/analytics-service:/app/apps/services/analytics-service
+      - ../../packages:/app/packages
+      - /app/node_modules
+      - /app/apps/services/analytics-service/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - laundry_network
+    restart: unless-stopped
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ../../
+      dockerfile: tools/docker/Dockerfile.microservice
+      args:
+        SERVICE_NAME: api-gateway
+        SERVICE_PATH: gateways
+    container_name: laundry_api_gateway
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      SERVICE_NAME: api-gateway
+      # Service URLs
+      USER_SERVICE_URL: http://user-service:3001
+      ORDER_SERVICE_URL: http://order-service:3002
+      PAYMENT_SERVICE_URL: http://payment-service:3003
+      NOTIFICATION_SERVICE_URL: http://notification-service:3004
+      LOCATION_SERVICE_URL: http://location-service:3005
+      ANALYTICS_SERVICE_URL: http://analytics-service:3006
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../../apps/gateways/api-gateway:/app/apps/gateways/api-gateway
+      - ../../packages:/app/packages
+      - /app/node_modules
+      - /app/apps/gateways/api-gateway/node_modules
+    depends_on:
+      - user-service
+      - order-service
+      - payment-service
+      - notification-service
+      - location-service
+      - analytics-service
+    networks:
+      - laundry_network
+    restart: unless-stopped
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ../../
+      dockerfile: apps/frontend/Dockerfile
+      target: development
+    container_name: laundry_frontend
+    environment:
+      NODE_ENV: development
+      API_URL: http://api-gateway:3000
+    ports:
+      - "4200:4200"
+    volumes:
+      - ../../apps/frontend:/app/apps/frontend
+      - ../../packages:/app/packages
+      - /app/node_modules
+      - /app/apps/frontend/node_modules
+    depends_on:
+      - api-gateway
+    networks:
+      - laundry_network
+    restart: unless-stopped
+
+  # Development Tools
+  adminer:
+    image: adminer:4.8.1
+    container_name: laundry_adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - laundry_network
+    restart: unless-stopped
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis_commander
+    environment:
+      REDIS_HOSTS: "local:redis:6379"
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - laundry_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  laundry_network:
+    driver: bridge

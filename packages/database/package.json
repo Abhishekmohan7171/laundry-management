@@ -1,0 +1,26 @@
+{
+  "name": "database",
+  "version": "1.0.0",
+  "description": "Shared database configuration and entities for laundry platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "shared-types": "workspace:*",
+    "constants": "workspace:*",
+    "@nestjs/typeorm": "^10.0.0",
+    "typeorm": "^0.3.17",
+    "pg": "^8.11.0",
+    "class-validator": "^0.14.0",
+    "class-transformer": "^0.5.1",
+    "reflect-metadata": "^0.1.13"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.10.0",
+    "typescript": "^5.1.3"
+  }
+}
